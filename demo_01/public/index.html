@@ -1,0 +1,703 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>gRPC Northwind Playground</title>
+    <style>
+        :root {
+            --bg: #f5f6f8;
+            --panel: #ffffff;
+            --text: #1c2430;
+            --muted: #66707e;
+            --border: #dde1e7;
+            --accent: #2457d6;
+            --accent-text: #ffffff;
+            --ok: #167a45;
+            --ok-bg: #e2f5ea;
+            --err: #b3261e;
+            --err-bg: #fbe7e5;
+            --code-bg: #f0f2f5;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #14171c;
+                --panel: #1d2128;
+                --text: #e6e9ee;
+                --muted: #9099a6;
+                --border: #313844;
+                --accent: #6b93ff;
+                --accent-text: #0e1420;
+                --ok: #5fd08f;
+                --ok-bg: #163324;
+                --err: #ff8f87;
+                --err-bg: #3a1a18;
+                --code-bg: #262b33;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+        }
+
+        header {
+            padding: 14px 20px;
+            background: var(--panel);
+            border-bottom: 1px solid var(--border);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        header p {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 270px 1fr;
+            gap: 16px;
+            padding: 16px 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .layout>* {
+            min-width: 0;
+        }
+
+        @media (max-width: 820px) {
+            .layout {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 14px;
+        }
+
+        .card h2 {
+            margin: 0 0 10px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: var(--muted);
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            color: var(--muted);
+            margin: 8px 0 3px;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 7px 9px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--panel);
+            color: var(--text);
+            font: inherit;
+        }
+
+        textarea,
+        .mono {
+            font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+            font-size: 13px;
+        }
+
+        textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+
+        button {
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: var(--panel);
+            color: var(--text);
+            border-radius: 6px;
+            padding: 7px 12px;
+            font: inherit;
+        }
+
+        button:hover {
+            border-color: var(--accent);
+        }
+
+        button.primary {
+            background: var(--accent);
+            color: var(--accent-text);
+            border-color: var(--accent);
+            font-weight: 600;
+        }
+
+        .row {
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+        }
+
+        .row>* {
+            flex: 1;
+        }
+
+        .row>button {
+            flex: 0 0 auto;
+        }
+
+        .group-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--muted);
+            margin: 12px 0 4px;
+        }
+
+        .group-title:first-child {
+            margin-top: 0;
+        }
+
+        .preset {
+            display: block;
+            width: 100%;
+            text-align: left;
+            margin-bottom: 4px;
+        }
+
+        .preset.active {
+            border-color: var(--accent);
+            background: var(--code-bg);
+        }
+
+        .jwt-info {
+            margin-top: 8px;
+            padding: 8px 10px;
+            background: var(--code-bg);
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        .jwt-info:empty {
+            display: none;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .badge.ok {
+            background: var(--ok-bg);
+            color: var(--ok);
+        }
+
+        .badge.err {
+            background: var(--err-bg);
+            color: var(--err);
+        }
+
+        .badge.idle {
+            background: var(--code-bg);
+            color: var(--muted);
+        }
+
+        .resp-head {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .spacer {
+            flex: 1;
+        }
+
+        .tabs button {
+            border-radius: 6px 6px 0 0;
+            padding: 4px 12px;
+        }
+
+        .tabs button.on {
+            background: var(--code-bg);
+            border-color: var(--accent);
+        }
+
+        .errbox {
+            padding: 10px 12px;
+            background: var(--err-bg);
+            color: var(--err);
+            border-radius: 6px;
+            font-weight: 500;
+        }
+
+        .chips {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+
+        .chip {
+            background: var(--code-bg);
+            border-radius: 999px;
+            padding: 2px 10px;
+            font-size: 12px;
+        }
+
+        .table-wrap {
+            overflow: auto;
+            max-height: 420px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 13px;
+        }
+
+        th,
+        td {
+            padding: 6px 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        th {
+            position: sticky;
+            top: 0;
+            background: var(--code-bg);
+        }
+
+        tbody tr[data-id] {
+            cursor: pointer;
+        }
+
+        tbody tr[data-id]:hover {
+            background: var(--code-bg);
+        }
+
+        tbody tr.sel {
+            outline: 2px solid var(--accent);
+            outline-offset: -2px;
+        }
+
+        pre {
+            margin: 0;
+            padding: 12px;
+            background: var(--code-bg);
+            border-radius: 6px;
+            overflow: auto;
+            max-height: 420px;
+            font-size: 13px;
+        }
+
+        .pager {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .hint {
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: 6px;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>gRPC Northwind Playground</h1>
+        <p>Navegador → <b>web.js</b> (HTTP/JSON) → servidor <b>gRPC</b> → MongoDB. El navegador no habla gRPC
+            directamente, por eso web.js actúa como cliente gRPC.</p>
+    </header>
+
+    <div class="layout">
+        <aside>
+            <div class="card" id="presets">
+                <h2>Operaciones</h2>
+            </div>
+        </aside>
+
+        <main>
+            <!-- g. Seguridad JWT -->
+            <section class="card">
+                <h2>g. Seguridad JWT</h2>
+                <div class="row">
+                    <div><label for="user">Usuario</label><input id="user" autocomplete="off" placeholder="username">
+                    </div>
+                    <div><label for="pass">Contraseña</label><input id="pass" type="password" autocomplete="off"
+                            placeholder="password"></div>
+                    <button class="primary" id="btnLogin">Login</button>
+                </div>
+                <label for="auth">Header <b>authorization</b> (se envía en cada llamada; edítalo o límpialo para probar
+                    el rechazo)</label>
+                <div class="row">
+                    <input id="auth" class="mono" placeholder="Bearer eyJhbGciOi...">
+                    <button id="btnClearAuth">Limpiar</button>
+                </div>
+                <div class="jwt-info" id="jwtInfo"></div>
+            </section>
+
+            <!-- Request -->
+            <section class="card">
+                <h2>Request</h2>
+                <div class="row">
+                    <div><label for="service">Servicio</label><select id="service"></select></div>
+                    <div><label for="method">Método</label><select id="method"></select></div>
+                    <button class="primary" id="btnSend" title="Ctrl + Enter">Enviar</button>
+                </div>
+                <label for="body">Cuerpo (JSON)</label>
+                <textarea id="body" spellcheck="false">{}</textarea>
+                <div class="hint">Id seleccionado: <span class="mono" id="selected">ninguno</span> — haz clic en una
+                    fila de la tabla para usar su id en Producto por id, Modificar o Eliminar.</div>
+            </section>
+
+            <!-- Response -->
+            <section class="card">
+                <h2>Response</h2>
+                <div class="resp-head">
+                    <span class="badge idle" id="badge">Sin enviar</span>
+                    <span class="hint" id="ms"></span>
+                    <span class="spacer"></span>
+                    <span class="tabs">
+                        <button class="on" id="tabTable">Tabla</button><button id="tabJson">JSON</button>
+                    </span>
+                </div>
+                <div id="viewTable"></div>
+                <pre id="viewJson" hidden></pre>
+                <div class="pager" id="pager" hidden>
+                    <button id="prev">← Anterior</button>
+                    <span id="pageInfo"></span>
+                    <button id="next">Siguiente →</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const $ = (id) => document.getElementById(id);
+        const state = { selectedId: '', lastData: null };
+
+        // ---------- Operaciones predefinidas (a - f) ----------
+        const PRESETS = [
+            {
+                group: 'a. Consultar todos los datos', items: [
+                    { label: 'Todos los productos', service: 'ProductService', method: 'GetAllProducts', request: () => ({}), send: true },
+                    { label: 'Producto por id', service: 'ProductService', method: 'GetProductById', request: () => ({ id: state.selectedId }), send: true },
+                ]
+            },
+            {
+                group: 'b. Campos específicos', items: [
+                    { label: 'Resumen (id, nombre, precio)', service: 'ProductService', method: 'GetProductsSummary', request: () => ({}), send: true },
+                ]
+            },
+            {
+                group: 'c. Filtros', items: [
+                    { label: 'Nombre "ch" y precio ≥ 20', service: 'ProductService', method: 'GetProductsByFilter', request: () => ({ keyword: 'ch', min_price: 20, max_price: 0 }), send: true },
+                ]
+            },
+            {
+                group: 'd. Joins y agregaciones', items: [
+                    { label: 'Join producto + categoría + proveedor', service: 'ProductService', method: 'GetProductsWithCategory', request: () => ({}), send: true },
+                    { label: 'Agregación por categoría', service: 'ProductService', method: 'GetCategoryStats', request: () => ({}), send: true },
+                ]
+            },
+            {
+                group: 'e. Insertar, modificar y eliminar', items: [
+                    { label: 'Crear producto', service: 'ProductService', method: 'CreateProduct', request: () => ({ name: 'Producto Demo', price: 10, stock: 5, category_id: '1', supplier_id: '1' }), send: false },
+                    { label: 'Modificar producto', service: 'ProductService', method: 'UpdateProduct', request: () => ({ id: state.selectedId, name: 'Producto Demo (editado)', price: 12.5, stock: 8 }), send: false },
+                    { label: 'Eliminar producto', service: 'ProductService', method: 'DeleteProduct', request: () => ({ id: state.selectedId }), send: false },
+                ]
+            },
+            {
+                group: 'f. Paginación y ordenamiento', items: [
+                    { label: 'Página 1, 5 por página, precio desc', service: 'ProductService', method: 'GetPaginatedProducts', request: () => ({ page: 1, limit: 5, sort_by: 'price', sort_order: 'desc' }), send: true },
+                ]
+            },
+        ];
+
+        function buildPresets() {
+            const box = $('presets');
+            for (const g of PRESETS) {
+                const t = document.createElement('div');
+                t.className = 'group-title';
+                t.textContent = g.group;
+                box.appendChild(t);
+                for (const p of g.items) {
+                    const b = document.createElement('button');
+                    b.className = 'preset';
+                    b.textContent = p.label;
+                    b.addEventListener('click', () => {
+                        document.querySelectorAll('.preset.active').forEach((el) => el.classList.remove('active'));
+                        b.classList.add('active');
+                        setMethod(p.service, p.method);
+                        $('body').value = JSON.stringify(p.request(), null, 2);
+                        if (p.send) send(); // las operaciones que modifican datos solo se cargan: tú presionas Enviar
+                    });
+                    box.appendChild(b);
+                }
+            }
+        }
+
+        // ---------- Selectores de servicio / método ----------
+        let METHODS = {};
+
+        function fillMethods() {
+            const methods = METHODS[$('service').value] || [];
+            $('method').replaceChildren(...methods.map((m) => new Option(m, m)));
+        }
+
+        function setMethod(service, method) {
+            $('service').value = service;
+            fillMethods();
+            $('method').value = method;
+        }
+
+        async function loadMethods() {
+            try {
+                METHODS = await (await fetch('/api/methods')).json();
+                $('service').replaceChildren(...Object.keys(METHODS).map((s) => new Option(s, s)));
+                $('service').value = 'ProductService';
+                fillMethods();
+            } catch {
+                renderError({ status: 'WEB_SERVER_DOWN', code: -1, message: 'No se pudo contactar a web.js. ¿Está corriendo (npm run web)?' });
+            }
+        }
+
+        // ---------- Llamada al servidor ----------
+        async function callApi(service, method, request) {
+            const started = performance.now();
+            let data;
+            try {
+                const res = await fetch('/api/call', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ service, method, request, authorization: $('auth').value.trim() }),
+                });
+                data = await res.json();
+            } catch {
+                data = { ok: false, error: { status: 'WEB_SERVER_DOWN', code: -1, message: 'No se pudo contactar a web.js. ¿Está corriendo (npm run web)?' } };
+            }
+            render(data, Math.round(performance.now() - started));
+            return data;
+        }
+
+        async function send() {
+            let request;
+            try {
+                request = JSON.parse($('body').value || '{}');
+            } catch (e) {
+                return renderError({ status: 'JSON_INVALIDO', code: -1, message: 'El cuerpo no es JSON válido: ' + e.message });
+            }
+            return callApi($('service').value, $('method').value, request);
+        }
+
+        // ---------- Login y JWT ----------
+        function decodeJwt(token) {
+            try {
+                const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+                const bytes = Uint8Array.from(atob(part), (c) => c.charCodeAt(0));
+                return JSON.parse(new TextDecoder().decode(bytes));
+            } catch { return null; }
+        }
+
+        function showJwtInfo() {
+            const token = $('auth').value.replace(/^Bearer\s+/i, '').trim();
+            const info = $('jwtInfo');
+            const p = token ? decodeJwt(token) : null;
+            if (!p) { info.textContent = ''; return; }
+            const exp = p.exp ? new Date(p.exp * 1000).toLocaleString() : '—';
+            info.textContent = `Token → usuario: ${p.username}  |  id: ${p.id}  |  expira: ${exp}`;
+        }
+
+        async function login() {
+            setMethod('AuthService', 'Login');
+            const request = { username: $('user').value.trim(), password: $('pass').value };
+            $('body').value = JSON.stringify({ username: request.username, password: '••••••' }, null, 2);
+            const data = await callApi('AuthService', 'Login', request);
+            if (data.ok && data.response.token) {
+                $('auth').value = 'Bearer ' + data.response.token;
+                showJwtInfo();
+            }
+        }
+
+        // ---------- Render de la respuesta ----------
+        const clip = (v) => {
+            const s = typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v);
+            return s.length > 60 ? s.slice(0, 57) + '…' : s;
+        };
+
+        function setBadge(text, cls) {
+            const b = $('badge');
+            b.textContent = text;
+            b.className = 'badge ' + cls;
+        }
+
+        function renderError(error) {
+            setBadge(`${error.status} · ${error.code}`, 'err');
+            $('ms').textContent = '';
+            $('viewJson').textContent = JSON.stringify(error, null, 2);
+            const box = document.createElement('div');
+            box.className = 'errbox';
+            box.textContent = error.message;
+            $('viewTable').replaceChildren(box);
+            $('pager').hidden = true;
+        }
+
+        function render(data, ms) {
+            state.lastData = data;
+            if (!data.ok) { renderError(data.error); $('ms').textContent = ms + ' ms'; return; }
+
+            setBadge('OK · 0', 'ok');
+            $('ms').textContent = ms + ' ms';
+            $('viewJson').textContent = JSON.stringify(data.response, null, 2);
+
+            const res = data.response;
+            const arrayKey = Object.keys(res).find((k) => Array.isArray(res[k]));
+            const wrap = document.createElement('div');
+
+            // datos sueltos (total, page, ...) como "chips"
+            const scalars = Object.entries(res).filter(([k]) => k !== arrayKey);
+            if (arrayKey && scalars.length) {
+                const chips = document.createElement('div');
+                chips.className = 'chips';
+                for (const [k, v] of scalars) {
+                    const c = document.createElement('span');
+                    c.className = 'chip';
+                    c.textContent = `${k}: ${clip(v)}`;
+                    chips.appendChild(c);
+                }
+                wrap.appendChild(chips);
+            }
+
+            const table = document.createElement('table');
+            const thead = table.createTHead().insertRow();
+            const tbody = table.createTBody();
+
+            if (arrayKey) {
+                const rows = res[arrayKey];
+                if (rows.length === 0) {
+                    const empty = document.createElement('div');
+                    empty.className = 'hint';
+                    empty.textContent = 'Sin resultados.';
+                    wrap.appendChild(empty);
+                } else {
+                    const cols = Object.keys(rows[0]);
+                    cols.forEach((c) => { const th = document.createElement('th'); th.textContent = c; thead.appendChild(th); });
+                    for (const row of rows) {
+                        const tr = tbody.insertRow();
+                        if (row.id) {
+                            tr.dataset.id = row.id;
+                            if (row.id === state.selectedId) tr.classList.add('sel');
+                        }
+                        cols.forEach((c) => { const td = tr.insertCell(); td.textContent = clip(row[c]); td.title = String(row[c]); });
+                    }
+                    wrap.appendChild(Object.assign(document.createElement('div'), { className: 'table-wrap' })).appendChild(table);
+                }
+            } else {
+                ['campo', 'valor'].forEach((c) => { const th = document.createElement('th'); th.textContent = c; thead.appendChild(th); });
+                for (const [k, v] of Object.entries(res)) {
+                    const tr = tbody.insertRow();
+                    tr.insertCell().textContent = k;
+                    const td = tr.insertCell(); td.textContent = clip(v); td.title = String(v);
+                    if (k === 'id') tr.dataset.id = v;
+                }
+                wrap.appendChild(Object.assign(document.createElement('div'), { className: 'table-wrap' })).appendChild(table);
+            }
+
+            $('viewTable').replaceChildren(wrap);
+
+            // paginación (f)
+            const paged = $('method').value === 'GetPaginatedProducts' && 'total_pages' in res;
+            $('pager').hidden = !paged;
+            if (paged) {
+                $('pageInfo').textContent = `Página ${res.page} de ${res.total_pages} · Total: ${res.total}`;
+                $('prev').disabled = res.page <= 1;
+                $('next').disabled = res.page >= res.total_pages;
+            }
+        }
+
+        function changePage(delta) {
+            try {
+                const req = JSON.parse($('body').value);
+                req.page = Math.max(1, (state.lastData?.response?.page || req.page || 1) + delta);
+                $('body').value = JSON.stringify(req, null, 2);
+                send();
+            } catch { /* el JSON del cuerpo no es válido; send() mostrará el error */ send(); }
+        }
+
+        // ---------- Selección de filas ----------
+        function selectId(id) {
+            state.selectedId = id;
+            $('selected').textContent = id;
+            document.querySelectorAll('#viewTable tr.sel').forEach((el) => el.classList.remove('sel'));
+            document.querySelector(`#viewTable tr[data-id="${CSS.escape(id)}"]`)?.classList.add('sel');
+            // si el cuerpo ya tiene un campo "id", lo actualiza
+            try {
+                const req = JSON.parse($('body').value);
+                if ('id' in req) { req.id = id; $('body').value = JSON.stringify(req, null, 2); }
+            } catch { /* se deja el cuerpo como está */ }
+        }
+
+        // ---------- Eventos ----------
+        $('viewTable').addEventListener('click', (e) => {
+            const tr = e.target.closest('tr[data-id]');
+            if (tr) selectId(tr.dataset.id);
+        });
+        $('btnLogin').addEventListener('click', login);
+        $('pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
+        $('btnClearAuth').addEventListener('click', () => { $('auth').value = ''; showJwtInfo(); });
+        $('auth').addEventListener('input', showJwtInfo);
+        $('btnSend').addEventListener('click', send);
+        $('body').addEventListener('keydown', (e) => { if (e.ctrlKey && e.key === 'Enter') send(); });
+        $('service').addEventListener('change', fillMethods);
+        $('prev').addEventListener('click', () => changePage(-1));
+        $('next').addEventListener('click', () => changePage(1));
+        $('tabTable').addEventListener('click', () => {
+            $('viewTable').hidden = false; $('viewJson').hidden = true;
+            $('tabTable').classList.add('on'); $('tabJson').classList.remove('on');
+        });
+        $('tabJson').addEventListener('click', () => {
+            $('viewTable').hidden = true; $('viewJson').hidden = false;
+            $('tabJson').classList.add('on'); $('tabTable').classList.remove('on');
+        });
+
+        buildPresets();
+        loadMethods();
+    </script>
+</body>
+
+</html>

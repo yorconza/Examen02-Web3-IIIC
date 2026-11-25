@@ -1,0 +1,140 @@
+syntax = "proto3";
+
+package northwind;
+
+// ---------- Autenticación (JWT) ----------
+service AuthService {
+  rpc Login (LoginRequest) returns (LoginResponse);
+}
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  string token = 1;
+  string message = 2;
+}
+
+// ---------- Productos ----------
+service ProductService {
+  // a. Todos los datos de la tabla
+  rpc GetAllProducts (Empty) returns (ProductListResponse);
+  rpc GetProductById (ProductByIdRequest) returns (ProductResponse);
+
+  // b. Solo campos específicos (proyección)
+  rpc GetProductsSummary (Empty) returns (ProductSummaryListResponse);
+
+  // c. Filtros
+  rpc GetProductsByFilter (ProductFilterRequest) returns (ProductListResponse);
+
+  // d. Joins y agregaciones
+  rpc GetProductsWithCategory (Empty) returns (ProductCategoryListResponse);
+  rpc GetCategoryStats (Empty) returns (CategoryStatsListResponse);
+
+  // e. Insertar, modificar y eliminar
+  rpc CreateProduct (CreateProductRequest) returns (ProductResponse);
+  rpc UpdateProduct (UpdateProductRequest) returns (ProductResponse);
+  rpc DeleteProduct (ProductByIdRequest) returns (DeleteResponse);
+
+  // f. Paginación y ordenamiento
+  rpc GetPaginatedProducts (PaginationRequest) returns (PaginatedProductsResponse);
+}
+
+message Empty {}
+
+message ProductResponse {
+  string id = 1;
+  string name = 2;
+  double price = 3;
+  int32 stock = 4;
+  string category_id = 5;
+  string supplier_id = 6;
+}
+
+message ProductListResponse {
+  repeated ProductResponse products = 1;
+}
+
+message ProductByIdRequest {
+  string id = 1;
+}
+
+// b. Campos específicos
+message ProductSummary {
+  string id = 1;
+  string name = 2;
+  double price = 3;
+}
+
+message ProductSummaryListResponse {
+  repeated ProductSummary items = 1;
+}
+
+// c. Filtros (0 o vacío = sin filtro)
+message ProductFilterRequest {
+  string keyword = 1;
+  double min_price = 2;
+  double max_price = 3;
+}
+
+// d. Join products + categories + suppliers
+message ProductCategoryResponse {
+  string product_name = 1;
+  double price = 2;
+  string category_name = 3;
+  string supplier_name = 4;
+}
+
+message ProductCategoryListResponse {
+  repeated ProductCategoryResponse items = 1;
+}
+
+// d. Agregación por categoría
+message CategoryStatsResponse {
+  string category_name = 1;
+  int32 product_count = 2;
+  double avg_price = 3;
+  int32 total_stock = 4;
+}
+
+message CategoryStatsListResponse {
+  repeated CategoryStatsResponse items = 1;
+}
+
+// e. CRUD
+message CreateProductRequest {
+  string name = 1;
+  double price = 2;
+  int32 stock = 3;
+  string category_id = 4;
+  string supplier_id = 5;
+}
+
+message UpdateProductRequest {
+  string id = 1;
+  string name = 2;
+  double price = 3;
+  int32 stock = 4;
+}
+
+message DeleteResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// f. Paginación y ordenamiento
+message PaginationRequest {
+  int32 page = 1;
+  int32 limit = 2;
+  string sort_by = 3;     // name | price | stock
+  string sort_order = 4;  // asc | desc
+}
+
+message PaginatedProductsResponse {
+  repeated ProductResponse products = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 total_pages = 4;
+}
