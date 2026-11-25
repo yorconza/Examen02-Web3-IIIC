@@ -1,0 +1,30 @@
+{
+  "name": "demo_01",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "tsx watch --env-file=.env src/index.ts",
+    "seed": "tsx --env-file=.env src/seed.ts",
+    "check": "tsc --noEmit"
+  },
+  "keywords": [],
+  "type": "module",
+  "dependencies": {
+    "@trpc/client": "^11.29.7",
+    "@trpc/server": "^11.29.7",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.12.3",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
